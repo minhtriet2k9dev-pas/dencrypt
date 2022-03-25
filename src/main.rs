@@ -84,7 +84,7 @@ fn analys_args(args: Vec<String>) -> DencryptData {
             key = String::from(&arg[6..]);
         } else if &arg[..7] == "--path=" {
             path = String::from(&arg[7..]);
-        } else if arg == "rec" {
+        } else if arg == "--rec" {
             is_recursive = true;
         } else {
             println!("Warning: unknow option \"{} \"", arg);
