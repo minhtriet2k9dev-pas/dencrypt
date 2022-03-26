@@ -8,17 +8,23 @@ use std::result;
 use std::thread;
 use walkdir::WalkDir;
 
-fn dencrypt_file(path: &str, key: &str) -> result::Result<(), io::Error> {
+fn dencrypt_file(path: &str, key: &str, allow_output: bool) -> result::Result<(), io::Error> {
     assert!(key != "");
     let buffer = path::PathBuf::from(path);
-    println!("Reading file \"{}\" ... ", path);
+    if allow_output {
+        println!("[File: \"{}\"]: Reading file ... ", path);
+    }
     let pure_data = fs::read(&buffer).expect(format!("Failed to read file \"{}\"", path).as_str());
-    println!(
-        "[File: \"{}\"]: Total size (bytes): {}",
-        path,
-        pure_data.len()
-    );
-    println!("[File: \"{}\"]: Executing process ... ", path);
+    if allow_output {
+        println!(
+            "[File: \"{}\"]: Total size (bytes): {}",
+            path,
+            pure_data.len()
+        );
+    }
+    if allow_output {
+        println!("[File: \"{}\"]: Executing process ... ", path);
+    }
     let endencrypt_data: Vec<u8> = pure_data
         .iter()
         .enumerate()
@@ -26,10 +32,16 @@ fn dencrypt_file(path: &str, key: &str) -> result::Result<(), io::Error> {
             return val ^ key.chars().nth(i % key.len()).unwrap() as u8;
         })
         .collect();
-    println!("[File: \"{}\"]: Process finished !", path);
-    println!("Writting file \"{}\" ... ", path);
+    if allow_output {
+        println!("[File: \"{}\"]: Process finished !", path);
+    }
+    if allow_output {
+        println!("[File: \"{}\"]: Writting file ... ", path);
+    }
     let ret = fs::write(buffer, endencrypt_data);
-    println!("[File: \"{}\"]: Command complete successfully !", path);
+    if allow_output {
+        println!("[File: \"{}\"]: Command complete successfully !", path);
+    }
     ret
 }
 
@@ -39,15 +51,23 @@ struct DencryptData {
     is_recursive: bool,
     key: String,
     is_multi_threads: bool,
+    allow_output: bool,
 }
 
 impl DencryptData {
-    fn new(path: String, is_recursive: bool, key: String, is_multi_threads: bool) -> Self {
+    fn new(
+        path: String,
+        is_recursive: bool,
+        key: String,
+        is_multi_threads: bool,
+        allow_output: bool,
+    ) -> Self {
         Self {
             path,
             is_recursive,
             key,
             is_multi_threads,
+            allow_output,
         }
     }
 
@@ -75,10 +95,10 @@ impl DencryptData {
             exit(1);
         }
 
-        if self.is_multi_threads {
+        if self.is_multi_threads && self.allow_output {
             println!("Multi threads mode enable");
         }
-        if self.is_recursive {
+        if self.is_recursive && self.allow_output {
             println!("Target directory: \"{}\"", self.path);
         }
     }
@@ -100,6 +120,7 @@ impl DencryptData {
                 let _ = dencrypt_file(
                     entry.path().display().to_string().as_str(),
                     hash_key(self, 3).as_str(),
+                    self.allow_output,
                 );
             } else {
                 let data = self.clone();
@@ -108,6 +129,7 @@ impl DencryptData {
                     let _ = dencrypt_file(
                         tmp_entry.path().display().to_string().as_str(),
                         hash_key(&data, 3).as_str(),
+                        data.allow_output,
                     );
                 });
                 threads.push(thread);
@@ -126,6 +148,7 @@ fn analys_args(args: Vec<String>) -> DencryptData {
     let mut is_recursive = false;
     let mut key = String::from("");
     let mut is_multi_threads = false;
+    let mut allow_output = true;
 
     for i in 1..args.len() {
         let arg = args.get(i).unwrap().as_str();
@@ -137,6 +160,8 @@ fn analys_args(args: Vec<String>) -> DencryptData {
                     path = String::from(&arg[7..]);
                 } else if arg == "--multi-threads" {
                     is_multi_threads = true;
+                } else if arg == "--no-output" {
+                    allow_output = false;
                 }
             }
         } else if arg == "--rec" {
@@ -146,7 +171,7 @@ fn analys_args(args: Vec<String>) -> DencryptData {
         }
     }
 
-    DencryptData::new(path, is_recursive, key, is_multi_threads)
+    DencryptData::new(path, is_recursive, key, is_multi_threads, allow_output)
 }
 
 fn hash_key(dencrypt_data: &DencryptData, time: u8) -> String {
@@ -161,13 +186,13 @@ fn main() {
     let _ = stdout().flush().unwrap();
     let args: Vec<String> = env::args().collect();
     let dencrypt_data: DencryptData = analys_args(args);
-    println!("{:?}", dencrypt_data);
     dencrypt_data.handle_args_error();
 
     if dencrypt_data.std_ok() && !dencrypt_data.is_recursive {
         let _ = dencrypt_file(
             dencrypt_data.path.as_str(),
             hash_key(&dencrypt_data, 3).as_str(),
+            dencrypt_data.allow_output,
         );
     }
 
