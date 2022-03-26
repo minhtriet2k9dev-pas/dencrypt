@@ -54,9 +54,11 @@ impl DencryptData {
 
     fn handle_args_error(&self) {
         if self.path == "".to_string() {
+            println!("Missing path");
             exit(1);
         }
         if self.key == "".to_string() {
+            println!("Missing key");
             exit(1);
         }
     }
@@ -65,7 +67,13 @@ impl DencryptData {
         if !self.is_recursive {
             return;
         }
-        for entry in WalkDir::new("foo").into_iter().filter_map(|e| e.ok()) {
+        for entry in WalkDir::new(self.path.as_str())
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.path().display().to_string() == self.path {
+                continue;
+            }
             let _ = dencrypt_file(
                 entry.path().display().to_string().as_str(),
                 hash_key(self, 3).as_str(),
@@ -80,10 +88,14 @@ fn analys_args(args: Vec<String>) -> DencryptData {
     let mut key = String::from("");
     for i in 1..args.len() {
         let arg = args.get(i).unwrap().as_str();
-        if &arg[..6] == "--key=" {
-            key = String::from(&arg[6..]);
-        } else if &arg[..7] == "--path=" {
-            path = String::from(&arg[7..]);
+        if arg.len() >= 6 {
+            if &arg[..6] == "--key=" {
+                key = String::from(&arg[6..]);
+            } else if arg.len() >= 7 {
+                if &arg[..7] == "--path=" {
+                    path = String::from(&arg[7..]);
+                }
+            }
         } else if arg == "--rec" {
             is_recursive = true;
         } else {
