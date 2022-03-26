@@ -1,2 +1,2 @@
 # Dencrypt
-this is a ransomware
+This is a ransomware
