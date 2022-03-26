@@ -103,25 +103,14 @@ impl DencryptData {
                 );
             } else {
                 let data = self.clone();
-                let md = fs::metadata(entry.path().display().to_string().as_str()).unwrap();
-                if md.is_file() {
-                    let tmp_entry = entry.clone();
-                    let thread = thread::spawn(move || {
-                        let _ = dencrypt_file(
-                            tmp_entry.path().display().to_string().as_str(),
-                            hash_key(&data, 3).as_str(),
-                        );
-                    });
-                    threads.push(thread);
-                } else {
-                    DencryptData::new(
-                        entry.path().display().to_string(),
-                        self.is_recursive,
-                        self.key.clone(),
-                        self.is_multi_threads,
-                    )
-                    .check_rec()
-                }
+                let tmp_entry = entry.clone();
+                let thread = thread::spawn(move || {
+                    let _ = dencrypt_file(
+                        tmp_entry.path().display().to_string().as_str(),
+                        hash_key(&data, 3).as_str(),
+                    );
+                });
+                threads.push(thread);
             }
         }
         if self.is_multi_threads {
