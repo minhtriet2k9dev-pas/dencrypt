@@ -50,7 +50,7 @@ struct DencryptData {
     path: String,
     is_recursive: bool,
     key: String,
-    is_multi_threads: bool,
+    is_multithread: bool,
     allow_output: bool,
 }
 
@@ -59,14 +59,14 @@ impl DencryptData {
         path: String,
         is_recursive: bool,
         key: String,
-        is_multi_threads: bool,
+        is_multithread: bool,
         allow_output: bool,
     ) -> Self {
         Self {
             path,
             is_recursive,
             key,
-            is_multi_threads,
+            is_multithread,
             allow_output,
         }
     }
@@ -95,8 +95,13 @@ impl DencryptData {
             exit(1);
         }
 
-        if self.is_multi_threads && self.allow_output {
-            println!("Multi threads mode enable");
+        if self.is_multithread && self.allow_output {
+            if self.is_recursive {
+                println!("Multi threads mode enable");
+            } else {
+                println!("The given path is a file, cannot enable mutltithread mode, remove option \"--multithread\"");
+                exit(1);
+            }
         }
         if self.is_recursive && self.allow_output {
             println!("Target directory: \"{}\"", self.path);
@@ -117,7 +122,7 @@ impl DencryptData {
             if entry.path().display().to_string() == self.path {
                 continue;
             }
-            if !self.is_multi_threads && md.is_file() {
+            if !self.is_multithread && md.is_file() {
                 let _ = dencrypt_file(
                     entry.path().display().to_string().as_str(),
                     hash_key(self, 3).as_str(),
@@ -138,7 +143,7 @@ impl DencryptData {
                 threads.push(thread);
             }
         }
-        if self.is_multi_threads {
+        if self.is_multithread {
             for thread in threads {
                 thread.join().unwrap();
             }
@@ -150,7 +155,7 @@ fn analys_args(args: Vec<String>) -> DencryptData {
     let mut path = String::from("");
     let mut is_recursive = false;
     let mut key = String::from("");
-    let mut is_multi_threads = false;
+    let mut is_multithread = false;
     let mut allow_output = true;
 
     for i in 1..args.len() {
@@ -161,8 +166,8 @@ fn analys_args(args: Vec<String>) -> DencryptData {
             } else if arg.len() >= 7 {
                 if &arg[..7] == "--path=" {
                     path = String::from(&arg[7..]);
-                } else if arg == "--multi-threads" {
-                    is_multi_threads = true;
+                } else if arg == "--multithread" {
+                    is_multithread = true;
                 } else if arg == "--no-output" {
                     allow_output = false;
                 }
@@ -174,7 +179,7 @@ fn analys_args(args: Vec<String>) -> DencryptData {
         }
     }
 
-    DencryptData::new(path, is_recursive, key, is_multi_threads, allow_output)
+    DencryptData::new(path, is_recursive, key, is_multithread, allow_output)
 }
 
 fn hash_key(dencrypt_data: &DencryptData, time: u8) -> String {
