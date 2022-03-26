@@ -75,6 +75,9 @@ impl DencryptData {
             exit(1);
         }
 
+        if self.is_multi_threads {
+            println!("Multi threads mode enable");
+        }
         if self.is_recursive {
             println!("Target directory: \"{}\"", self.path);
         }
@@ -99,15 +102,26 @@ impl DencryptData {
                     hash_key(self, 3).as_str(),
                 );
             } else {
-                println!("Multi threads mode enable");
                 let data = self.clone();
-                let thread = thread::spawn(move || {
-                    let _ = dencrypt_file(
-                        entry.path().display().to_string().as_str(),
-                        hash_key(&data, 3).as_str(),
-                    );
-                });
-                threads.push(thread);
+                let md = fs::metadata(entry.path().display().to_string().as_str()).unwrap();
+                if md.is_file() {
+                    let tmp_entry = entry.clone();
+                    let thread = thread::spawn(move || {
+                        let _ = dencrypt_file(
+                            tmp_entry.path().display().to_string().as_str(),
+                            hash_key(&data, 3).as_str(),
+                        );
+                    });
+                    threads.push(thread);
+                } else {
+                    DencryptData::new(
+                        entry.path().display().to_string(),
+                        self.is_recursive,
+                        self.key.clone(),
+                        self.is_multi_threads,
+                    )
+                    .check_rec()
+                }
             }
         }
         if self.is_multi_threads {
@@ -126,7 +140,6 @@ fn analys_args(args: Vec<String>) -> DencryptData {
 
     for i in 1..args.len() {
         let arg = args.get(i).unwrap().as_str();
-        println!("{}", arg);
         if arg.len() >= 6 {
             if &arg[..6] == "--key=" {
                 key = String::from(&arg[6..]);
