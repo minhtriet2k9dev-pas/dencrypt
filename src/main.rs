@@ -113,10 +113,11 @@ impl DencryptData {
             .into_iter()
             .filter_map(|e| e.ok())
         {
+            let md = fs::metadata(entry.path()).unwrap();
             if entry.path().display().to_string() == self.path {
                 continue;
             }
-            if !self.is_multi_threads {
+            if !self.is_multi_threads && md.is_file() {
                 let _ = dencrypt_file(
                     entry.path().display().to_string().as_str(),
                     hash_key(self, 3).as_str(),
@@ -126,11 +127,13 @@ impl DencryptData {
                 let data = self.clone();
                 let tmp_entry = entry.clone();
                 let thread = thread::spawn(move || {
-                    let _ = dencrypt_file(
-                        tmp_entry.path().display().to_string().as_str(),
-                        hash_key(&data, 3).as_str(),
-                        data.allow_output,
-                    );
+                    if md.is_file() {
+                        let _ = dencrypt_file(
+                            tmp_entry.path().display().to_string().as_str(),
+                            hash_key(&data, 3).as_str(),
+                            data.allow_output,
+                        );
+                    }
                 });
                 threads.push(thread);
             }
